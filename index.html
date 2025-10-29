@@ -1,0 +1,4265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#FF7A00">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Alerta Via - Protótipo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" media="print" onload="this.media='all'" />
+    <style>
+        :root {
+            --primary-color: #FF7A00;
+            --admin-color: #9C27B0;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --background: #FFFFFF;
+            --card-background: #FFFFFF;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+            --safe-area-top: env(safe-area-inset-top);
+            --safe-area-bottom: env(safe-area-inset-bottom);
+            --touch-target-size: 44px;
+            --bottom-nav-height: 70px;
+        }
+
+        [data-theme="dark"] {
+            --background: #121212;
+            --card-background: #1E1E1E;
+            --text-primary: #F5F5F5;
+            --text-secondary: #BBBBBB;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            transition: var(--transition);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            font-size: 16px;
+            line-height: 1.5;
+            height: 100vh;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 100%;
+            min-height: 100vh;
+            position: relative;
+            background-color: var(--background);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            flex: 1;
+            padding-bottom: var(--bottom-nav-height);
+            padding-top: var(--safe-area-top);
+            animation: fadeIn 0.3s ease;
+            will-change: opacity;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            height: calc(100vh - var(--bottom-nav-height));
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Header Styles */
+        .header {
+            padding: 20px;
+            background-color: var(--card-background);
+            box-shadow: 0 2px 10px var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .header.admin-header {
+            background: linear-gradient(135deg, var(--admin-color), #7B1FA2);
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--primary-color);
+            flex: 1;
+            text-align: center;
+        }
+
+        .header.admin-header h1 {
+            color: white;
+        }
+
+        .header-icon {
+            width: var(--touch-target-size);
+            height: var(--touch-target-size);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            cursor: pointer;
+            transition: var(--transition);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .header-icon:active {
+            transform: scale(0.95);
+        }
+
+        .header.admin-header .header-icon {
+            color: white;
+        }
+
+        .header-icon:hover {
+            background-color: rgba(255, 122, 0, 0.1);
+        }
+
+        .header.admin-header .header-icon:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Login Screen Styles */
+        .login-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .geometric-element {
+            position: absolute;
+            background-color: rgba(255, 122, 0, 0.1);
+            border-radius: 50%;
+            z-index: 0;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .geometric-element:nth-child(1) {
+            width: 200px;
+            height: 200px;
+            top: -100px;
+            right: -50px;
+            animation-delay: 0s;
+        }
+
+        .geometric-element:nth-child(2) {
+            width: 150px;
+            height: 150px;
+            bottom: -50px;
+            left: -50px;
+            animation-delay: 2s;
+        }
+
+        .geometric-element:nth-child(3) {
+            width: 100px;
+            height: 100px;
+            top: 50%;
+            left: -30px;
+            animation-delay: 4s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .login-content {
+            width: 100%;
+            max-width: 350px;
+            z-index: 1;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo i {
+            font-size: 64px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            display: block;
+            animation: pulse 2s infinite;
+        }
+
+        .logo.admin-logo i {
+            color: var(--admin-color);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .logo h1 {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .logo.admin-logo h1 {
+            color: var(--admin-color);
+        }
+
+        .logo p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #E0E0E0;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            background-color: var(--card-background);
+            color: var(--text-primary);
+            transition: var(--transition);
+            min-height: var(--touch-target-size);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.1);
+        }
+
+        .form-group input.error {
+            border-color: #FF4458;
+        }
+
+        .error-message {
+            color: #FF4458;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .btn-admin {
+            background-color: var(--admin-color);
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: #E56D00;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 122, 0, 0.3);
+        }
+
+        .btn-admin:hover:not(:disabled) {
+            background-color: #7B1FA2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(156, 39, 176, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: rgba(255, 122, 0, 0.05);
+        }
+
+        .btn-link {
+            background-color: transparent;
+            color: var(--text-secondary);
+            text-decoration: underline;
+            font-size: 14px;
+        }
+
+        .btn-link:hover {
+            color: var(--primary-color);
+        }
+
+        /* Feed Screen Styles */
+        .filter-container {
+            padding: 15px;
+            background-color: var(--card-background);
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            box-shadow: 0 2px 5px var(--shadow);
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            -webkit-overflow-scrolling: touch;
+            flex-shrink: 0;
+        }
+
+        .filter-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-btn {
+            padding: 8px 15px;
+            border: 1px solid #E0E0E0;
+            border-radius: 20px;
+            background-color: var(--card-background);
+            color: var(--text-secondary);
+            font-size: 14px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .filter-btn:active {
+            transform: scale(0.95);
+        }
+
+        .filter-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .alert-list {
+            padding: 15px;
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .alert-card {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px var(--shadow);
+            transition: var(--transition);
+            overflow: hidden;
+            position: relative;
+            will-change: transform;
+        }
+
+        .alert-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+
+        .alert-image-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+        }
+
+        .alert-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .alert-image:hover {
+            transform: scale(1.02);
+        }
+
+        .image-gallery-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .gallery-dots {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+        }
+
+        .gallery-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .gallery-dot.active {
+            background-color: white;
+            width: 20px;
+            border-radius: 4px;
+        }
+
+        .alert-content {
+            padding: 15px;
+        }
+
+        .alert-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .alert-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255, 122, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: var(--primary-color);
+        }
+
+        .alert-info h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .alert-info p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .alert-description {
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .alert-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 10px;
+            border-top: 1px solid #F0F0F0;
+        }
+
+        .alert-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .alert-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            background-color: rgba(255, 122, 0, 0.1);
+            color: var(--primary-color);
+            font-size: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+        }
+
+        .action-btn:hover {
+            background-color: var(--primary-color);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .action-btn.liked {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .delete-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            background-color: rgba(244, 67, 54, 0.1);
+            color: #F44336;
+            font-size: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .delete-btn:active {
+            transform: scale(0.95);
+        }
+
+        .delete-btn:hover {
+            background-color: #F44336;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .social-actions {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 15px;
+            border-top: 1px solid #F0F0F0;
+        }
+
+        .social-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            border: none;
+            background: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            border-radius: 8px;
+            font-size: 14px;
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .social-btn:active {
+            transform: scale(0.95);
+        }
+
+        .social-btn:hover {
+            background-color: rgba(255, 122, 0, 0.05);
+            color: var(--primary-color);
+        }
+
+        .social-btn.liked {
+            color: #FF4458;
+        }
+
+        .social-btn i {
+            font-size: 18px;
+        }
+
+        /* Share Modal */
+        .share-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2500;
+            padding: 20px;
+        }
+
+        .share-modal.show {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .share-container {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius);
+            width: 100%;
+            max-width: 400px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .share-header {
+            padding: 20px;
+            border-bottom: 1px solid #E0E0E0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .share-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .share-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            width: var(--touch-target-size);
+            height: var(--touch-target-size);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .share-close:active {
+            transform: scale(0.95);
+        }
+
+        .share-close:hover {
+            color: var(--primary-color);
+        }
+
+        .share-content {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .share-preview {
+            background-color: rgba(255, 122, 0, 0.05);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 122, 0, 0.2);
+        }
+
+        .share-preview h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--primary-color);
+        }
+
+        .share-preview p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .share-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .share-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px 10px;
+            border: 1px solid #E0E0E0;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            color: var(--text-primary);
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .share-option:active {
+            transform: scale(0.95);
+        }
+
+        .share-option:hover {
+            background-color: rgba(255, 122, 0, 0.05);
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .share-option i {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .share-option.whatsapp { color: #25D366; }
+        .share-option.facebook { color: #1877F2; }
+        .share-option.twitter { color: #1DA1F2; }
+        .share-option.instagram { color: #E4405F; }
+        .share-option.telegram { color: #0088CC; }
+        .share-option.linkedin { color: #0077B5; }
+        .share-option.email { color: #EA4335; }
+        .share-option.sms { color: #34B7F1; }
+        .share-option.copy { color: var(--primary-color); }
+
+        .share-option span {
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .share-link-section {
+            margin-top: 20px;
+        }
+
+        .share-link-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .share-link-input input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #E0E0E0;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            background-color: var(--background);
+            color: var(--text-primary);
+        }
+
+        .share-link-input button {
+            padding: 10px 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .share-link-input button:active {
+            transform: scale(0.95);
+        }
+
+        .share-link-input button:hover {
+            background-color: #E56D00;
+        }
+
+        /* Map Styles */
+        #map {
+            flex: 1;
+            width: 100%;
+            min-height: 400px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .map-control-btn {
+            width: var(--touch-target-size);
+            height: var(--touch-target-size);
+            border-radius: 50%;
+            background-color: white;
+            border: none;
+            box-shadow: 0 2px 5px var(--shadow);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            color: var(--primary-color);
+            touch-action: manipulation;
+        }
+
+        .map-control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .map-control-btn:hover {
+            transform: scale(1.1);
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .location-search {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 70px;
+            z-index: 1000;
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 10px var(--shadow);
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .location-search input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .location-search button {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            padding: 5px;
+            width: var(--touch-target-size);
+            height: var(--touch-target-size);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            touch-action: manipulation;
+        }
+
+        .location-search button:active {
+            transform: scale(0.95);
+        }
+
+        .map-info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 10px var(--shadow);
+            padding: 15px;
+            z-index: 1000;
+        }
+
+        .map-info-panel h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .map-info-panel p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .map-info-panel .btn {
+            margin-bottom: 0;
+        }
+
+        /* Image Upload Styles */
+        .image-upload-section {
+            margin-bottom: 25px;
+        }
+
+        .image-upload-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .uploaded-image {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            background-color: #F5F5F5;
+        }
+
+        .uploaded-image img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .remove-image {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            font-size: 14px;
+            touch-action: manipulation;
+        }
+
+        .remove-image:active {
+            transform: scale(0.95);
+        }
+
+        .remove-image:hover {
+            background-color: rgba(255, 0, 0, 1);
+            transform: scale(1.1);
+        }
+
+        .upload-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .upload-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px dashed #E0E0E0;
+            border-radius: var(--border-radius);
+            background-color: var(--card-background);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .upload-btn:active {
+            transform: scale(0.95);
+        }
+
+        .upload-btn:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(255, 122, 0, 0.05);
+            color: var(--primary-color);
+        }
+
+        .upload-btn i {
+            font-size: 24px;
+        }
+
+        #file-input, #camera-input {
+            display: none;
+        }
+
+        /* Image Gallery Modal */
+        .gallery-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            padding: 20px;
+        }
+
+        .gallery-modal.show {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .gallery-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            max-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gallery-image {
+            max-width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: var(--border-radius);
+        }
+
+        .gallery-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: var(--transition);
+            touch-action: manipulation;
+        }
+
+        .gallery-nav:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        .gallery-nav:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .gallery-nav.prev {
+            left: 20px;
+        }
+
+        .gallery-nav.next {
+            right: 20px;
+        }
+
+        .gallery-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: var(--transition);
+            touch-action: manipulation;
+        }
+
+        .gallery-close:active {
+            transform: scale(0.95);
+        }
+
+        .gallery-close:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .gallery-counter {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        /* Comment Modal */
+        .comment-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .comment-modal.show {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .comment-container {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius);
+            width: 100%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s ease;
+        }
+
+        .comment-header {
+            padding: 20px;
+            border-bottom: 1px solid #E0E0E0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .comment-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            width: var(--touch-target-size);
+            height: var(--touch-target-size);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            touch-action: manipulation;
+        }
+
+        .close-btn:active {
+            transform: scale(0.95);
+        }
+
+        .close-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .comment-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .comment-item {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .comment-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .comment-content {
+            flex: 1;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .comment-text {
+            font-size: 14px;
+            line-height: 1.4;
+            color: var(--text-primary);
+        }
+
+        .comment-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .comment-delete-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: none;
+            border: none;
+            color: #F44336;
+            cursor: pointer;
+            padding: 5px;
+            font-size: 14px;
+            transition: var(--transition);
+            width: var(--touch-target-size);
+            height: var(--touch-target-size);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            touch-action: manipulation;
+        }
+
+        .comment-delete-btn:active {
+            transform: scale(0.95);
+        }
+
+        .comment-delete-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .comment-input-container {
+            padding: 20px;
+            border-top: 1px solid #E0E0E0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .comment-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #E0E0E0;
+            border-radius: 20px;
+            font-size: 14px;
+            background-color: var(--background);
+            color: var(--text-primary);
+        }
+
+        .comment-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .send-comment-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        .send-comment-btn:active {
+            transform: scale(0.95);
+        }
+
+        .send-comment-btn:hover {
+            background-color: #E56D00;
+            transform: scale(1.1);
+        }
+
+        /* New Alert Screen Styles */
+        .new-alert-container {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .form-section {
+            margin-bottom: 25px;
+        }
+
+        .form-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-type-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .type-option {
+            padding: 15px 10px;
+            border: 1px solid #E0E0E0;
+            border-radius: var(--border-radius);
+            background-color: var(--card-background);
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .type-option:active {
+            transform: scale(0.95);
+        }
+
+        .type-option:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(255, 122, 0, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .type-option.selected {
+            border-color: var(--primary-color);
+            background-color: rgba(255, 122, 0, 0.1);
+        }
+
+        .type-option i {
+            font-size: 24px;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .type-option span {
+            font-size: 12px;
+            color: var(--text-primary);
+        }
+
+        .location-preview {
+            background-color: var(--card-background);
+            border: 1px solid #E0E0E0;
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .location-preview i {
+            color: var(--primary-color);
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .location-preview p {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .form-group textarea {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #E0E0E0;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            background-color: var(--card-background);
+            color: var(--text-primary);
+            resize: none;
+            min-height: 100px;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.1);
+        }
+
+        /* Menu Screen Styles */
+        .menu-container {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .menu-section {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px var(--shadow);
+        }
+
+        .menu-section h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #F0F0F0;
+            cursor: pointer;
+            transition: var(--transition);
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .menu-item:active {
+            transform: scale(0.98);
+        }
+
+        .menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .menu-item:hover {
+            background-color: rgba(255, 122, 0, 0.05);
+            margin: 0 -20px;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+
+        .menu-item i {
+            width: 30px;
+            font-size: 18px;
+            color: var(--primary-color);
+            margin-right: 15px;
+        }
+
+        .menu-item-content h4 {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .menu-item-content p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            margin-left: auto;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: var(--transition);
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: var(--transition);
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Bottom Navigation - CORRIGIDO */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--card-background);
+            box-shadow: 0 -2px 10px var(--shadow);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            padding-bottom: calc(10px + var(--safe-area-bottom));
+            z-index: 1000;
+            height: var(--bottom-nav-height);
+            min-height: var(--bottom-nav-height);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 5px 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--text-secondary);
+            flex: 1;
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .nav-item:active {
+            transform: scale(0.95);
+        }
+
+        .nav-item.active {
+            color: var(--primary-color);
+        }
+
+        .nav-item.admin-active {
+            color: var(--admin-color);
+        }
+
+        .nav-item i {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .nav-item span {
+            font-size: 12px;
+            text-align: center;
+        }
+
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: calc(var(--bottom-nav-height) + 20px);
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px var(--shadow);
+            cursor: pointer;
+            transition: var(--transition);
+            z-index: 999;
+            touch-action: manipulation;
+        }
+
+        .fab:active {
+            transform: scale(0.95);
+        }
+
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 15px rgba(255, 122, 0, 0.4);
+        }
+
+        /* Success Message */
+        .success-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 25px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            z-index: 2000;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { transform: translate(-50%, -100%); }
+            to { transform: translate(-50%, 0); }
+        }
+
+        .success-message.show {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            .app-container {
+                max-width: 480px;
+                margin: 0 auto;
+                box-shadow: 0 0 20px var(--shadow);
+            }
+        }
+
+        @media (max-width: 380px) {
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .logo h1 {
+                font-size: 30px;
+            }
+            
+            .logo i {
+                font-size: 50px;
+            }
+            
+            .alert-type-selector {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .share-options {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Custom Leaflet Styles */
+        .leaflet-popup-content-wrapper {
+            border-radius: var(--border-radius);
+        }
+
+        .leaflet-popup-content {
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+        }
+
+        .custom-marker {
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .pulse-marker {
+            animation: pulse-marker 2s infinite;
+        }
+
+        @keyframes pulse-marker {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 122, 0, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(255, 122, 0, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 122, 0, 0);
+            }
+        }
+
+        /* Offline indicator */
+        .offline-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: #FF4458;
+            color: white;
+            padding: 8px;
+            text-align: center;
+            font-size: 14px;
+            z-index: 3000;
+            display: none;
+        }
+
+        .offline-indicator.show {
+            display: block;
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 4000;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .loading-spinner-large {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 122, 0, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 15px;
+        }
+
+        .loading-text {
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        /* Admin Badge */
+        .admin-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: var(--admin-color);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            z-index: 10;
+        }
+
+        /* Delete Confirmation Modal */
+        .delete-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2600;
+            padding: 20px;
+        }
+
+        .delete-modal.show {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .delete-container {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius);
+            width: 100%;
+            max-width: 350px;
+            padding: 25px;
+            text-align: center;
+            animation: slideUp 0.3s ease;
+        }
+
+        .delete-icon {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(244, 67, 54, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: #F44336;
+            font-size: 24px;
+        }
+
+        .delete-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .delete-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+
+        .delete-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .delete-btn-cancel {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #E0E0E0;
+            border-radius: var(--border-radius);
+            background-color: transparent;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .delete-btn-cancel:active {
+            transform: scale(0.95);
+        }
+
+        .delete-btn-cancel:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .delete-btn-confirm {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: var(--border-radius);
+            background-color: #F44336;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            min-height: var(--touch-target-size);
+            touch-action: manipulation;
+        }
+
+        .delete-btn-confirm:active {
+            transform: scale(0.95);
+        }
+
+        .delete-btn-confirm:hover {
+            background-color: #D32F2F;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Offline Indicator -->
+        <div id="offline-indicator" class="offline-indicator">
+            <i class="fas fa-wifi"></i> Você está offline. Algumas funcionalidades podem não estar disponíveis.
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay">
+            <div class="loading-content">
+                <div class="loading-spinner-large"></div>
+                <p class="loading-text">Carregando...</p>
+            </div>
+        </div>
+
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen active">
+            <div class="login-container">
+                <div class="geometric-element"></div>
+                <div class="geometric-element"></div>
+                <div class="geometric-element"></div>
+                <div class="login-content">
+                    <div class="logo">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h1>Alerta Via</h1>
+                        <p>Sua cidade mais segura começa com um alerta.</p>
+                    </div>
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="email"><i class="fas fa-envelope"></i> E-mail</label>
+                            <input type="email" id="email" placeholder="seu@email.com" required>
+                            <div class="error-message" id="email-error">Por favor, insira um e-mail válido</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="password"><i class="fas fa-lock"></i> Senha</label>
+                            <input type="password" id="password" placeholder="••••••••" required>
+                            <div class="error-message" id="password-error">A senha deve ter pelo menos 6 caracteres</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="login-btn">
+                            <i class="fas fa-sign-in-alt"></i> Entrar
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="showScreen('register-screen')">
+                            <i class="fas fa-user-plus"></i> Criar conta
+                        </button>
+                        <button type="button" class="btn btn-link" onclick="showScreen('feed-screen')">
+                            <i class="fas fa-eye"></i> Entrar como visitante
+                        </button>
+                        <button type="button" class="btn btn-admin" onclick="showScreen('admin-login-screen')">
+                            <i class="fas fa-user-shield"></i> Acesso Admin
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Login Screen -->
+        <div id="admin-login-screen" class="screen">
+            <div class="login-container">
+                <div class="geometric-element"></div>
+                <div class="geometric-element"></div>
+                <div class="geometric-element"></div>
+                <div class="login-content">
+                    <div class="logo admin-logo">
+                        <i class="fas fa-user-shield"></i>
+                        <h1>Painel Admin</h1>
+                        <p>Acesso restrito para administradores</p>
+                    </div>
+                    <form id="admin-login-form">
+                        <div class="form-group">
+                            <label for="admin-email"><i class="fas fa-envelope"></i> E-mail Admin</label>
+                            <input type="email" id="admin-email" placeholder="admin@alertavia.com" required>
+                            <div class="error-message" id="admin-email-error">Por favor, insira um e-mail válido</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-password"><i class="fas fa-lock"></i> Senha Admin</label>
+                            <input type="password" id="admin-password" placeholder="••••••••" required>
+                            <div class="error-message" id="admin-password-error">Senha incorreta</div>
+                        </div>
+                        <button type="submit" class="btn btn-admin" id="admin-login-btn">
+                            <i class="fas fa-sign-in-alt"></i> Entrar como Admin
+                        </button>
+                        <button type="button" class="btn btn-link" onclick="showScreen('login-screen')">
+                            <i class="fas fa-arrow-left"></i> Voltar para Login
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Register Screen -->
+        <div id="register-screen" class="screen">
+            <div class="login-container">
+                <div class="geometric-element"></div>
+                <div class="geometric-element"></div>
+                <div class="geometric-element"></div>
+                <div class="login-content">
+                    <div class="logo">
+                        <i class="fas fa-user-circle"></i>
+                        <h1>Criar Conta</h1>
+                        <p>Participe e ajude a tornar a cidade mais segura.</p>
+                    </div>
+                    <form id="register-form">
+                        <div class="form-group">
+                            <label for="name"><i class="fas fa-user"></i> Nome completo</label>
+                            <input type="text" id="name" placeholder="Seu nome" required>
+                            <div class="error-message" id="name-error">Por favor, insira seu nome completo</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="email-register"><i class="fas fa-envelope"></i> E-mail</label>
+                            <input type="email" id="email-register" placeholder="seu@email.com" required>
+                            <div class="error-message" id="email-register-error">Por favor, insira um e-mail válido</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="password-register"><i class="fas fa-lock"></i> Senha</label>
+                            <input type="password" id="password-register" placeholder="Crie uma senha" required>
+                            <div class="error-message" id="password-register-error">A senha deve ter pelo menos 6 caracteres</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="password-confirm"><i class="fas fa-lock"></i> Confirmar senha</label>
+                            <input type="password" id="password-confirm" placeholder="Confirme sua senha" required>
+                            <div class="error-message" id="password-confirm-error">As senhas não coincidem</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="register-btn">
+                            <i class="fas fa-check"></i> Criar conta
+                        </button>
+                        <button type="button" class="btn btn-link" onclick="showScreen('login-screen')">
+                            <i class="fas fa-arrow-left"></i> Já tenho uma conta
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feed Screen -->
+        <div id="feed-screen" class="screen">
+            <div class="header" id="feed-header">
+                <div class="header-icon" onclick="toggleNotifications()">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <h1>Alertas Recentes</h1>
+                <div class="header-icon" onclick="toggleSearch()">
+                    <i class="fas fa-search"></i>
+                </div>
+            </div>
+
+            <div class="filter-container">
+                <button class="filter-btn active" onclick="filterAlerts('recent')">
+                    <i class="fas fa-clock"></i> Mais recentes
+                </button>
+                <button class="filter-btn" onclick="filterAlerts('nearby')">
+                    <i class="fas fa-map-marker-alt"></i> Mais próximos
+                </button>
+                <button class="filter-btn" onclick="filterAlerts('accident')">
+                    <i class="fas fa-car-crash"></i> Acidente
+                </button>
+                <button class="filter-btn" onclick="filterAlerts('pothole')">
+                    <i class="fas fa-road"></i> Buraco
+                </button>
+                <button class="filter-btn" onclick="filterAlerts('traffic')">
+                    <i class="fas fa-traffic-light"></i> Trânsito
+                </button>
+                <button class="filter-btn" onclick="filterAlerts('construction')">
+                    <i class="fas fa-hard-hat"></i> Obra
+                </button>
+            </div>
+            <div class="alert-list" id="alert-list">
+                <!-- Alert cards will be dynamically generated here -->
+            </div>
+            <div class="fab" onclick="showScreen('new-alert-screen')">
+                <i class="fas fa-plus"></i>
+            </div>
+        </div>
+
+        <!-- New Alert Screen -->
+        <div id="new-alert-screen" class="screen">
+            <div class="header">
+                <div class="header-icon" onclick="showScreen('feed-screen')">
+                    <i class="fas fa-arrow-left"></i>
+                </div>
+                <h1>Criar Novo Alerta</h1>
+                <div class="header-icon" onclick="showAlertHelp()">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+            </div>
+            <div class="new-alert-container">
+                <div class="form-section">
+                    <h3><i class="fas fa-exclamation-circle"></i> Tipo de alerta</h3>
+                    <div class="alert-type-selector">
+                        <div class="type-option" onclick="selectAlertType(this, 'accident')">
+                            <i class="fas fa-car-crash"></i>
+                            <span>Acidente</span>
+                        </div>
+                        <div class="type-option" onclick="selectAlertType(this, 'pothole')">
+                            <i class="fas fa-road"></i>
+                            <span>Buraco</span>
+                        </div>
+                        <div class="type-option" onclick="selectAlertType(this, 'traffic')">
+                            <i class="fas fa-traffic-light"></i>
+                            <span>Semáforo</span>
+                        </div>
+                        <div class="type-option" onclick="selectAlertType(this, 'construction')">
+                            <i class="fas fa-hard-hat"></i>
+                            <span>Obra</span>
+                        </div>
+                        <div class="type-option" onclick="selectAlertType(this, 'flood')">
+                            <i class="fas fa-water"></i>
+                            <span>Enchente</span>
+                        </div>
+                        <div class="type-option" onclick="selectAlertType(this, 'other')">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>Outro</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3><i class="fas fa-map-marker-alt"></i> Localização</h3>
+                    <div class="location-preview">
+                        <i class="fas fa-map-pin"></i>
+                        <p id="location-text">Copacabana, Rio de Janeiro - RJ</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="showScreen('map-screen')">
+                        <i class="fas fa-map"></i> Ajustar no mapa
+                    </button>
+                </div>
+
+                <div class="form-section">
+                    <h3><i class="fas fa-align-left"></i> Descrição</h3>
+                    <div class="form-group">
+                        <textarea id="alert-description" placeholder="Descreva brevemente o problema..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3><i class="fas fa-camera"></i> Fotos e Vídeos</h3>
+                    <div class="image-upload-section">
+                        <div class="upload-options">
+                            <button class="upload-btn" onclick="document.getElementById('file-input').click()">
+                                <i class="fas fa-image"></i>
+                                <span>Galeria</span>
+                            </button>
+                            <button class="upload-btn" onclick="document.getElementById('camera-input').click()">
+                                <i class="fas fa-camera"></i>
+                                <span>Câmera</span>
+                            </button>
+                        </div>
+                        <input type="file" id="file-input" accept="image/*,video/*" multiple onchange="handleFileSelect(event)">
+                        <input type="file" id="camera-input" accept="image/*,video/*" capture="environment" onchange="handleFileSelect(event)">
+                        
+                        <div class="image-upload-grid" id="image-upload-grid">
+                            <!-- Uploaded images will be displayed here -->
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="submitAlert()">
+                    <i class="fas fa-paper-plane"></i> Enviar Alerta
+                </button>
+            </div>
+        </div>
+
+        <!-- Map Screen -->
+        <div id="map-screen" class="screen">
+            <div class="header">
+                <div class="header-icon" onclick="showScreen('new-alert-screen')">
+                    <i class="fas fa-arrow-left"></i>
+                </div>
+                <h1>Selecionar Localização</h1>
+                <div class="header-icon" onclick="getCurrentLocation()">
+                    <i class="fas fa-crosshairs"></i>
+                </div>
+            </div>
+            <div style="position: relative; flex: 1;">
+                <div id="map"></div>
+                <div class="location-search">
+                    <input type="text" id="map-search" placeholder="Buscar endereço no Rio de Janeiro...">
+                    <button onclick="searchLocation()">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="map-controls">
+                    <button class="map-control-btn" onclick="getCurrentLocation()">
+                        <i class="fas fa-location-arrow"></i>
+                    </button>
+                    <button class="map-control-btn" onclick="zoomIn()">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button class="map-control-btn" onclick="zoomOut()">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                </div>
+                <div class="map-info-panel" id="map-info-panel">
+                    <h4><i class="fas fa-map-marker-alt"></i> Localização Selecionada</h4>
+                    <p id="selected-address">Clique no mapa para selecionar uma localização</p>
+                    <button class="btn btn-primary" onclick="confirmMapLocation()">
+                        <i class="fas fa-check"></i> Confirmar Localização
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Menu Screen -->
+        <div id="menu-screen" class="screen">
+            <div class="header" id="menu-header">
+                <div class="header-icon"></div>
+                <h1>Menu</h1>
+                <div class="header-icon" onclick="showSettings()">
+                    <i class="fas fa-cog"></i>
+                </div>
+            </div>
+            <div class="menu-container">
+                <div class="menu-section">
+                    <h3><i class="fas fa-home"></i> Menu Principal</h3>
+                    <div class="menu-item" onclick="showScreen('feed-screen')">
+                        <i class="fas fa-stream"></i>
+                        <div class="menu-item-content">
+                            <h4>Feed de Alertas</h4>
+                            <p>Ver todos os alertas recentes</p>
+                        </div>
+                    </div>
+                    <div class="menu-item" onclick="showScreen('new-alert-screen')">
+                        <i class="fas fa-plus-circle"></i>
+                        <div class="menu-item-content">
+                            <h4>Novo Registro</h4>
+                            <p>Reportar um novo problema</p>
+                        </div>
+                    </div>
+                    <div class="menu-item" onclick="showProfile()">
+                        <i class="fas fa-user-circle"></i>
+                        <div class="menu-item-content">
+                            <h4>Meu Perfil</h4>
+                            <p>Gerenciar suas informações</p>
+                        </div>
+                    </div>
+                    <div class="menu-item" onclick="showMyAlerts()">
+                        <i class="fas fa-history"></i>
+                        <div class="menu-item-content">
+                            <h4>Meus Alertas</h4>
+                            <p>Ver histórico de suas reportagens</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="menu-section" id="admin-menu-section" style="display: none;">
+                    <h3><i class="fas fa-user-shield"></i> Painel Admin</h3>
+                    <div class="menu-item" onclick="showAdminStats()">
+                        <i class="fas fa-chart-bar"></i>
+                        <div class="menu-item-content">
+                            <h4>Estatísticas</h4>
+                            <p>Ver estatísticas detalhadas</p>
+                        </div>
+                    </div>
+                    <div class="menu-item" onclick="showModeration()">
+                        <i class="fas fa-gavel"></i>
+                        <div class="menu-item-content">
+                            <h4>Moderação</h4>
+                            <p>Gerenciar conteúdo</p>
+                        </div>
+                    </div>
+                    <div class="menu-item" onclick="showUsers()">
+                        <i class="fas fa-users-cog"></i>
+                        <div class="menu-item-content">
+                            <h4>Gerenciar Usuários</h4>
+                            <p>Ver e gerenciar usuários</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="menu-section">
+                    <h3><i class="fas fa-bell"></i> Notificações</h3>
+                    <div class="menu-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div class="menu-item-content">
+                            <h4>Alertas por região</h4>
+                            <p>Receber alertas da sua área</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="menu-item">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <div class="menu-item-content">
+                            <h4>Alertas urgentes</h4>
+                            <p>Notificações de emergência</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="menu-item">
+                        <i class="fas fa-comment"></i>
+                        <div class="menu-item-content">
+                            <h4>Comentários</h4>
+                            <p>Receber respostas nos alertas</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="menu-item">
+                        <i class="fas fa-moon"></i>
+                        <div class="menu-item-content">
+                            <h4>Modo escuro</h4>
+                            <p>Alternar tema do aplicativo</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="dark-mode-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="menu-section">
+                    <h3><i class="fas fa-question-circle"></i> Ajuda</h3>
+                    <div class="menu-item" onclick="showTutorial()">
+                        <i class="fas fa-book"></i>
+                        <div class="menu-item-content">
+                            <h4>Como usar o app</h4>
+                            <p>Tutorial e guia de uso</p>
+                        </div>
+                    </div>
+                    <div class="menu-item" onclick="showSupport()">
+                        <i class="fas fa-headset"></i>
+                        <div class="menu-item-content">
+                            <h4>Contato de suporte</h4>
+                            <p>Fale conosco</p>
+                        </div>
+                    </div>
+                    <div class="menu-item" onclick="showPrivacy()">
+                        <i class="fas fa-shield-alt"></i>
+                        <div class="menu-item-content">
+                            <h4>Política de Privacidade</h4>
+                            <p>Seus dados estão seguros</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="menu-section">
+                    <h3><i class="fas fa-info-circle"></i> Sobre Nós</h3>
+                    <div class="menu-item" onclick="showMission()">
+                        <i class="fas fa-bullseye"></i>
+                        <div class="menu-item-content">
+                            <h4>Missão e Visão</h4>
+                            <p>Conheça o projeto Alerta Via</p>
+                        </div>
+                    </div>
+                    <div class="menu-item" onclick="showTeam()">
+                        <i class="fas fa-users"></i>
+                        <div class="menu-item-content">
+                            <h4>Nossa Equipe</h4>
+                            <p>Quem faz o Alerta Via</p>
+                        </div>
+                    </div>
+                    <div class="menu-item" onclick="showRateApp()">
+                        <i class="fas fa-star"></i>
+                        <div class="menu-item-content">
+                            <h4>Avalie o App</h4>
+                            <p>Nos dê sua opinião</p>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="showScreen('feed-screen')">
+                <i class="fas fa-stream"></i>
+                <span>Feed</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('new-alert-screen')">
+                <i class="fas fa-plus"></i>
+                <span>Novo</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('map-screen')">
+                <i class="fas fa-map"></i>
+                <span>Mapa</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('menu-screen')">
+                <i class="fas fa-bars"></i>
+                <span>Menu</span>
+            </div>
+        </div>
+
+        <!-- Share Modal -->
+        <div id="share-modal" class="share-modal">
+            <div class="share-container">
+                <div class="share-header">
+                    <h3>Compartilhar Alerta</h3>
+                    <button class="share-close" onclick="closeShareModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="share-content">
+                    <div class="share-preview">
+                        <h4 id="share-title">Título do Alerta</h4>
+                        <p id="share-description">Descrição do alerta será exibida aqui...</p>
+                    </div>
+                    
+                    <div class="share-options">
+                        <a href="#" class="share-option whatsapp" onclick="shareToWhatsApp(event)">
+                            <i class="fab fa-whatsapp"></i>
+                            <span>WhatsApp</span>
+                        </a>
+                        <a href="#" class="share-option facebook" onclick="shareToFacebook(event)">
+                            <i class="fab fa-facebook-f"></i>
+                            <span>Facebook</span>
+                        </a>
+                        <a href="#" class="share-option twitter" onclick="shareToTwitter(event)">
+                            <i class="fab fa-twitter"></i>
+                            <span>Twitter</span>
+                        </a>
+                        <a href="#" class="share-option instagram" onclick="shareToInstagram(event)">
+                            <i class="fab fa-instagram"></i>
+                            <span>Instagram</span>
+                        </a>
+                        <a href="#" class="share-option telegram" onclick="shareToTelegram(event)">
+                            <i class="fab fa-telegram"></i>
+                            <span>Telegram</span>
+                        </a>
+                        <a href="#" class="share-option linkedin" onclick="shareToLinkedIn(event)">
+                            <i class="fab fa-linkedin-in"></i>
+                            <span>LinkedIn</span>
+                        </a>
+                        <a href="#" class="share-option email" onclick="shareToEmail(event)">
+                            <i class="fas fa-envelope"></i>
+                            <span>E-mail</span>
+                        </a>
+                        <a href="#" class="share-option sms" onclick="shareToSMS(event)">
+                            <i class="fas fa-sms"></i>
+                            <span>SMS</span>
+                        </a>
+                        <a href="#" class="share-option copy" onclick="copyToClipboard(event)">
+                            <i class="fas fa-link"></i>
+                            <span>Copiar</span>
+                        </a>
+                    </div>
+
+                    <div class="share-link-section">
+                        <div class="share-link-input">
+                            <input type="text" id="share-link" readonly value="">
+                            <button onclick="copyShareLink()">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Gallery Modal -->
+        <div id="gallery-modal" class="gallery-modal">
+            <div class="gallery-container">
+                <img id="gallery-image" class="gallery-image" src="" alt="">
+                <button class="gallery-nav prev" onclick="navigateGallery(-1)">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="gallery-nav next" onclick="navigateGallery(1)">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                <button class="gallery-close" onclick="closeGallery()">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="gallery-counter" id="gallery-counter">1 / 1</div>
+            </div>
+        </div>
+
+        <!-- Comment Modal -->
+        <div id="comment-modal" class="comment-modal">
+            <div class="comment-container">
+                <div class="comment-header">
+                    <h3>Comentários</h3>
+                    <button class="close-btn" onclick="closeCommentModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="comment-list" id="comment-list">
+                    <!-- Comments will be dynamically generated here -->
+                </div>
+                <div class="comment-input-container">
+                    <input type="text" class="comment-input" id="comment-input" placeholder="Adicione um comentário...">
+                    <button class="send-comment-btn" onclick="sendComment()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="delete-modal" class="delete-modal">
+            <div class="delete-container">
+                <div class="delete-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3 class="delete-title">Confirmar Exclusão</h3>
+                <p class="delete-text" id="delete-text">Tem certeza que deseja excluir este item? Esta ação não pode ser desfeita.</p>
+                <div class="delete-buttons">
+                    <button class="delete-btn-cancel" onclick="closeDeleteModal()">Cancelar</button>
+                    <button class="delete-btn-confirm" id="delete-confirm-btn">Excluir</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Message -->
+        <div id="success-message" class="success-message">
+            <i class="fas fa-check-circle"></i> <span id="success-text">Operação realizada com sucesso!</span>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // App State Management
+        const AppState = {
+            currentUser: null,
+            isAdmin: false,
+            isOnline: navigator.onLine,
+            currentScreen: 'login-screen',
+            selectedAlertType: null,
+            selectedLocation: null,
+            uploadedImages: [],
+            darkMode: localStorage.getItem('darkMode') === 'true',
+            notifications: true,
+            filters: {
+                type: 'recent',
+                category: null
+            }
+        };
+
+        // DOM Cache
+        const Elements = {
+            screens: {},
+            buttons: {},
+            inputs: {},
+            modals: {},
+            overlays: {}
+        };
+
+        // Initialize DOM Cache
+        function initDOMCache() {
+            // Cache screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                Elements.screens[screen.id] = screen;
+            });
+
+            // Cache buttons
+            Elements.buttons.loginBtn = document.getElementById('login-btn');
+            Elements.buttons.registerBtn = document.getElementById('register-btn');
+            Elements.buttons.adminLoginBtn = document.getElementById('admin-login-btn');
+            Elements.buttons.darkModeToggle = document.getElementById('dark-mode-toggle');
+
+            // Cache inputs
+            Elements.inputs.email = document.getElementById('email');
+            Elements.inputs.password = document.getElementById('password');
+            Elements.inputs.adminEmail = document.getElementById('admin-email');
+            Elements.inputs.adminPassword = document.getElementById('admin-password');
+            Elements.inputs.name = document.getElementById('name');
+            Elements.inputs.emailRegister = document.getElementById('email-register');
+            Elements.inputs.passwordRegister = document.getElementById('password-register');
+            Elements.inputs.passwordConfirm = document.getElementById('password-confirm');
+            Elements.inputs.alertDescription = document.getElementById('alert-description');
+            Elements.inputs.commentInput = document.getElementById('comment-input');
+            Elements.inputs.mapSearch = document.getElementById('map-search');
+
+            // Cache modals
+            Elements.modals.shareModal = document.getElementById('share-modal');
+            Elements.modals.galleryModal = document.getElementById('gallery-modal');
+            Elements.modals.commentModal = document.getElementById('comment-modal');
+            Elements.modals.deleteModal = document.getElementById('delete-modal');
+
+            // Cache overlays
+            Elements.overlays.loadingOverlay = document.getElementById('loading-overlay');
+            Elements.overlays.offlineIndicator = document.getElementById('offline-indicator');
+        }
+
+        // Sample alert data with Rio de Janeiro locations
+        let alertData = [
+            {
+                id: 1,
+                type: 'accident',
+                icon: 'fa-car-crash',
+                title: 'Acidente na Avenida Atlântica',
+                location: 'Av. Atlântica, 1500 - Copacabana',
+                distance: '0.5 km',
+                description: 'Colisão entre dois veículos bloqueando uma faixa da via. Trânsito lento na região.',
+                time: 'Há 15 minutos',
+                confirmed: 12,
+                likes: 45,
+                comments: 8,
+                images: [
+                    'https://picsum.photos/seed/accident1a/400/200',
+                    'https://picsum.photos/seed/accident1b/400/200',
+                    'https://picsum.photos/seed/accident1c/400/200'
+                ],
+                liked: false,
+                lat: -22.9672,
+                lng: -43.1789
+            },
+            {
+                id: 2,
+                type: 'pothole',
+                icon: 'fa-road',
+                title: 'Buraco na Rua Visconde de Pirajá',
+                location: 'Rua Visconde de Pirajá, 800 - Ipanema',
+                distance: '1.2 km',
+                description: 'Buraco de aproximadamente 50cm de diâmetro, risco para motociclistas.',
+                time: 'Há 1 hora',
+                confirmed: 8,
+                likes: 23,
+                comments: 3,
+                images: [
+                    'https://picsum.photos/seed/pothole1a/400/200',
+                    'https://picsum.photos/seed/pothole1b/400/200'
+                ],
+                liked: false,
+                lat: -22.9836,
+                lng: -43.1969
+            },
+            {
+                id: 3,
+                type: 'traffic',
+                icon: 'fa-traffic-light',
+                title: 'Semáforo queimado no Centro',
+                location: 'Rua Primeiro de Março, 1500 - Centro',
+                distance: '2.0 km',
+                description: 'Semáforo não está funcionando, causando confusão no cruzamento.',
+                time: 'Há 2 horas',
+                confirmed: 5,
+                likes: 15,
+                comments: 2,
+                images: [
+                    'https://picsum.photos/seed/traffic1a/400/200'
+                ],
+                liked: false,
+                lat: -22.9035,
+                lng: -43.1786
+            },
+            {
+                id: 4,
+                type: 'construction',
+                icon: 'fa-hard-hat',
+                title: 'Obras na Barra da Tijuca',
+                location: 'Avenida das Américas, 5000 - Barra da Tijuca',
+                distance: '0.8 km',
+                description: 'Obras de reforma na calçada reduzindo a passagem de pedestres.',
+                time: 'Há 3 horas',
+                confirmed: 7,
+                likes: 18,
+                comments: 4,
+                images: [
+                    'https://picsum.photos/seed/construction1a/400/200',
+                    'https://picsum.photos/seed/construction1b/400/200',
+                    'https://picsum.photos/seed/construction1c/400/200',
+                    'https://picsum.photos/seed/construction1d/400/200'
+                ],
+                liked: false,
+                lat: -22.9995,
+                lng: -43.3652
+            },
+            {
+                id: 5,
+                type: 'flood',
+                icon: 'fa-water',
+                title: 'Alagamento em Botafogo',
+                location: 'Rua Nelson Mandela, 100 - Botafogo',
+                distance: '1.5 km',
+                description: 'Ponto de alagamento após chuva forte, cuidado ao passar com veículos.',
+                time: 'Há 4 horas',
+                confirmed: 15,
+                likes: 32,
+                comments: 6,
+                images: [
+                    'https://picsum.photos/seed/flood1a/400/200',
+                    'https://picsum.photos/seed/flood1b/400/200'
+                ],
+                liked: false,
+                lat: -22.9474,
+                lng: -43.1802
+            }
+        ];
+
+        // Sample comments data
+        let commentsData = {
+            1: [
+                { author: 'João Silva', text: 'Acabei de passar por ali, realmente está bem complicado.', time: 'Há 10 minutos', avatar: 'JS' },
+                { author: 'Maria Santos', text: 'A polícia já está no local.', time: 'Há 12 minutos', avatar: 'MS' },
+                { author: 'Pedro Costa', text: 'Evitem essa região por enquanto.', time: 'Há 14 minutos', avatar: 'PC' }
+            ],
+            2: [
+                { author: 'Ana Oliveira', text: 'Já bati a roda nesse buraco semana passada!', time: 'Há 45 minutos', avatar: 'AO' },
+                { author: 'Carlos Lima', text: 'A prefeitura precisa consertar isso urgentemente.', time: 'Há 1 hora', avatar: 'CL' }
+            ]
+        };
+
+        // Global variables
+        let currentAlertId = null;
+        let currentGalleryIndex = 0;
+        let currentGalleryImages = [];
+        let map = null;
+        let currentMarker = null;
+        let selectedLocation = null;
+        let currentShareAlert = null;
+        let deleteCallback = null;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            initDOMCache();
+            setupEventListeners();
+            checkDarkModePreference();
+            setupNetworkListeners();
+            loadUserData();
+            renderAlerts(alertData);
+            setupTouchGestures();
+            optimizeImages();
+        });
+
+        // Setup touch gestures for mobile
+        function setupTouchGestures() {
+            // Add swipe gestures for gallery navigation
+            const galleryModal = document.getElementById('gallery-modal');
+            
+            galleryModal.addEventListener('touchstart', function(e) {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+            
+            galleryModal.addEventListener('touchend', function(e) {
+                touchEndX = e.changedTouches[0].screenX;
+                touchEndY = e.changedTouches[0].screenY;
+                handleSwipe();
+            }, { passive: true });
+            
+            // Add pull-to-refresh for feed
+            const alertList = document.getElementById('alert-list');
+            let startY = 0;
+            let isPulling = false;
+            
+            alertList.addEventListener('touchstart', function(e) {
+                if (alertList.scrollTop === 0) {
+                    startY = e.touches[0].pageY;
+                    isPulling = true;
+                }
+            }, { passive: true });
+            
+            alertList.addEventListener('touchmove', function(e) {
+                if (!isPulling) return;
+                
+                const currentY = e.touches[0].pageY;
+                const pullDistance = currentY - startY;
+                
+                if (pullDistance > 0 && pullDistance < 150) {
+                    alertList.style.transform = `translateY(${pullDistance * 0.5}px)`;
+                }
+            }, { passive: true });
+            
+            alertList.addEventListener('touchend', function(e) {
+                if (!isPulling) return;
+                
+                const currentY = e.changedTouches[0].pageY;
+                const pullDistance = currentY - startY;
+                
+                if (pullDistance > 100) {
+                    // Refresh the feed
+                    showLoading(true);
+                    setTimeout(() => {
+                        renderAlerts(alertData);
+                        showLoading(false);
+                        showSuccessMessage('Feed atualizado!');
+                    }, 1000);
+                }
+                
+                alertList.style.transform = '';
+                isPulling = false;
+            }, { passive: true });
+        }
+        
+        // Handle swipe gestures
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diffX = touchStartX - touchEndX;
+            const diffY = touchStartY - touchEndY;
+            
+            // Horizontal swipe
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                if (diffX > swipeThreshold) {
+                    // Swipe left - next image
+                    navigateGallery(1);
+                } else if (diffX < -swipeThreshold) {
+                    // Swipe right - previous image
+                    navigateGallery(-1);
+                }
+            }
+        }
+
+        // Optimize images for mobile
+        function optimizeImages() {
+            // Add intersection observer for lazy loading
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            img.src = img.dataset.src;
+                            img.classList.remove('lazy');
+                            imageObserver.unobserve(img);
+                        }
+                    });
+                });
+                
+                document.querySelectorAll('img.lazy').forEach(img => {
+                    imageObserver.observe(img);
+                });
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Login form
+            document.getElementById('login-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleLogin();
+            });
+
+            // Admin login form
+            document.getElementById('admin-login-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleAdminLogin();
+            });
+
+            // Register form
+            document.getElementById('register-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleRegister();
+            });
+
+            // Dark mode toggle
+            Elements.buttons.darkModeToggle.addEventListener('change', function() {
+                toggleDarkMode();
+            });
+
+            // Comment input enter key
+            Elements.inputs.commentInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendComment();
+                }
+            });
+
+            // Map search enter key
+            Elements.inputs.mapSearch.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchLocation();
+                }
+            });
+
+            // Gallery modal keyboard navigation
+            document.addEventListener('keydown', function(e) {
+                if (Elements.modals.galleryModal.classList.contains('show')) {
+                    if (e.key === 'ArrowLeft') navigateGallery(-1);
+                    if (e.key === 'ArrowRight') navigateGallery(1);
+                    if (e.key === 'Escape') closeGallery();
+                }
+                
+                if (e.key === 'Escape') {
+                    if (Elements.modals.shareModal.classList.contains('show')) closeShareModal();
+                    if (Elements.modals.commentModal.classList.contains('show')) closeCommentModal();
+                    if (Elements.modals.deleteModal.classList.contains('show')) closeDeleteModal();
+                }
+            });
+
+            // Close modals when clicking outside
+            Elements.modals.commentModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeCommentModal();
+                }
+            });
+
+            Elements.modals.galleryModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeGallery();
+                }
+            });
+
+            Elements.modals.shareModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeShareModal();
+                }
+            });
+
+            Elements.modals.deleteModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeDeleteModal();
+                }
+            });
+
+            // Delete confirm button
+            document.getElementById('delete-confirm-btn').addEventListener('click', function() {
+                if (deleteCallback) {
+                    deleteCallback();
+                }
+            });
+            
+            // Add service worker for PWA capabilities
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').catch(error => {
+                    console.log('Service worker registration failed:', error);
+                });
+            }
+        }
+
+        // Setup network listeners
+        function setupNetworkListeners() {
+            window.addEventListener('online', function() {
+                AppState.isOnline = true;
+                Elements.overlays.offlineIndicator.classList.remove('show');
+                showSuccessMessage('Conexão restaurada!');
+            });
+
+            window.addEventListener('offline', function() {
+                AppState.isOnline = false;
+                Elements.overlays.offlineIndicator.classList.add('show');
+                showSuccessMessage('Você está offline. Algumas funcionalidades podem não estar disponíveis.');
+            });
+        }
+
+        // Load user data from localStorage
+        function loadUserData() {
+            const userData = localStorage.getItem('userData');
+            if (userData) {
+                AppState.currentUser = JSON.parse(userData);
+                // If user is logged in, show feed screen
+                if (AppState.currentUser) {
+                    if (AppState.currentUser.isAdmin) {
+                        AppState.isAdmin = true;
+                        showAdminInterface();
+                    }
+                    showScreen('feed-screen');
+                }
+            }
+            
+            // Load saved data
+            const savedAlerts = localStorage.getItem('alertData');
+            if (savedAlerts) {
+                alertData = JSON.parse(savedAlerts);
+            }
+            
+            const savedComments = localStorage.getItem('commentsData');
+            if (savedComments) {
+                commentsData = JSON.parse(savedComments);
+            }
+        }
+
+        // Save user data to localStorage
+        function saveUserData(userData) {
+            AppState.currentUser = userData;
+            localStorage.setItem('userData', JSON.stringify(userData));
+        }
+
+        // Handle admin login
+        function handleAdminLogin() {
+            const email = Elements.inputs.adminEmail.value;
+            const password = Elements.inputs.adminPassword.value;
+            
+            // Validate form
+            if (!validateAdminLoginForm()) {
+                return;
+            }
+            
+            // Show loading
+            showLoading(true);
+            
+            // Simulate API call
+            setTimeout(() => {
+                // Check admin credentials (demo: admin@alertavia.com / admin123)
+                if (email === 'admin@alertavia.com' && password === 'admin123') {
+                    // Save admin user data
+                    saveUserData({
+                        email: email,
+                        name: 'Administrador',
+                        avatar: 'AD',
+                        isAdmin: true
+                    });
+                    
+                    AppState.isAdmin = true;
+                    showLoading(false);
+                    showAdminInterface();
+                    showScreen('feed-screen');
+                    showSuccessMessage('Login admin realizado com sucesso!');
+                } else {
+                    showLoading(false);
+                    document.getElementById('admin-password-error').style.display = 'block';
+                    Elements.inputs.adminPassword.classList.add('error');
+                }
+            }, 1500);
+        }
+
+        // Validate admin login form
+        function validateAdminLoginForm() {
+            let isValid = true;
+            
+            // Validate email
+            const email = Elements.inputs.adminEmail.value;
+            const emailError = document.getElementById('admin-email-error');
+            if (!email || !isValidEmail(email)) {
+                Elements.inputs.adminEmail.classList.add('error');
+                emailError.style.display = 'block';
+                isValid = false;
+            } else {
+                Elements.inputs.adminEmail.classList.remove('error');
+                emailError.style.display = 'none';
+            }
+            
+            // Validate password
+            const password = Elements.inputs.adminPassword.value;
+            const passwordError = document.getElementById('admin-password-error');
+            if (!password) {
+                Elements.inputs.adminPassword.classList.add('error');
+                passwordError.style.display = 'block';
+                isValid = false;
+            } else {
+                Elements.inputs.adminPassword.classList.remove('error');
+                passwordError.style.display = 'none';
+            }
+            
+            return isValid;
+        }
+
+        // Show admin interface
+        function showAdminInterface() {
+            // Update header
+            const feedHeader = document.getElementById('feed-header');
+            const menuHeader = document.getElementById('menu-header');
+            feedHeader.classList.add('admin-header');
+            menuHeader.classList.add('admin-header');
+            
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.add('admin-active');
+            });
+            
+            // Show admin menu section
+            document.getElementById('admin-menu-section').style.display = 'block';
+            
+            // Update FAB color
+            document.querySelector('.fab').style.backgroundColor = 'var(--admin-color)';
+        }
+
+        // Hide admin interface
+        function hideAdminInterface() {
+            // Update header
+            const feedHeader = document.getElementById('feed-header');
+            const menuHeader = document.getElementById('menu-header');
+            feedHeader.classList.remove('admin-header');
+            menuHeader.classList.remove('admin-header');
+            
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('admin-active');
+            });
+            
+            // Hide admin menu section
+            document.getElementById('admin-menu-section').style.display = 'none';
+            
+            // Update FAB color
+            document.querySelector('.fab').style.backgroundColor = 'var(--primary-color)';
+        }
+
+        // Handle login
+        function handleLogin() {
+            const email = Elements.inputs.email.value;
+            const password = Elements.inputs.password.value;
+            
+            // Validate form
+            if (!validateLoginForm()) {
+                return;
+            }
+            
+            // Show loading
+            showLoading(true);
+            
+            // Simulate API call
+            setTimeout(() => {
+                // Save user data
+                saveUserData({
+                    email: email,
+                    name: email.split('@')[0],
+                    avatar: email.substring(0, 2).toUpperCase(),
+                    isAdmin: false
+                });
+                
+                showLoading(false);
+                showScreen('feed-screen');
+                showSuccessMessage('Login realizado com sucesso!');
+            }, 1500);
+        }
+
+        // Validate login form
+        function validateLoginForm() {
+            let isValid = true;
+            
+            // Validate email
+            const email = Elements.inputs.email.value;
+            const emailError = document.getElementById('email-error');
+            if (!email || !isValidEmail(email)) {
+                Elements.inputs.email.classList.add('error');
+                emailError.style.display = 'block';
+                isValid = false;
+            } else {
+                Elements.inputs.email.classList.remove('error');
+                emailError.style.display = 'none';
+            }
+            
+            // Validate password
+            const password = Elements.inputs.password.value;
+            const passwordError = document.getElementById('password-error');
+            if (!password || password.length < 6) {
+                Elements.inputs.password.classList.add('error');
+                passwordError.style.display = 'block';
+                isValid = false;
+            } else {
+                Elements.inputs.password.classList.remove('error');
+                passwordError.style.display = 'none';
+            }
+            
+            return isValid;
+        }
+
+        // Handle register
+        function handleRegister() {
+            const name = Elements.inputs.name.value;
+            const email = Elements.inputs.emailRegister.value;
+            const password = Elements.inputs.passwordRegister.value;
+            const passwordConfirm = Elements.inputs.passwordConfirm.value;
+            
+            // Validate form
+            if (!validateRegisterForm()) {
+                return;
+            }
+            
+            // Show loading
+            showLoading(true);
+            
+            // Simulate API call
+            setTimeout(() => {
+                // Save user data
+                saveUserData({
+                    name: name,
+                    email: email,
+                    avatar: name.substring(0, 2).toUpperCase(),
+                    isAdmin: false
+                });
+                
+                showLoading(false);
+                showScreen('feed-screen');
+                showSuccessMessage('Conta criada com sucesso!');
+            }, 1500);
+        }
+
+        // Validate register form
+        function validateRegisterForm() {
+            let isValid = true;
+            
+            // Validate name
+            const name = Elements.inputs.name.value;
+            const nameError = document.getElementById('name-error');
+            if (!name || name.trim().length < 3) {
+                Elements.inputs.name.classList.add('error');
+                nameError.style.display = 'block';
+                isValid = false;
+            } else {
+                Elements.inputs.name.classList.remove('error');
+                nameError.style.display = 'none';
+            }
+            
+            // Validate email
+            const email = Elements.inputs.emailRegister.value;
+            const emailError = document.getElementById('email-register-error');
+            if (!email || !isValidEmail(email)) {
+                Elements.inputs.emailRegister.classList.add('error');
+                emailError.style.display = 'block';
+                isValid = false;
+            } else {
+                Elements.inputs.emailRegister.classList.remove('error');
+                emailError.style.display = 'none';
+            }
+            
+            // Validate password
+            const password = Elements.inputs.passwordRegister.value;
+            const passwordError = document.getElementById('password-register-error');
+            if (!password || password.length < 6) {
+                Elements.inputs.passwordRegister.classList.add('error');
+                passwordError.style.display = 'block';
+                isValid = false;
+            } else {
+                Elements.inputs.passwordRegister.classList.remove('error');
+                passwordError.style.display = 'none';
+            }
+            
+            // Validate password confirmation
+            const passwordConfirm = Elements.inputs.passwordConfirm.value;
+            const passwordConfirmError = document.getElementById('password-confirm-error');
+            if (password !== passwordConfirm) {
+                Elements.inputs.passwordConfirm.classList.add('error');
+                passwordConfirmError.style.display = 'block';
+                isValid = false;
+            } else {
+                Elements.inputs.passwordConfirm.classList.remove('error');
+                passwordConfirmError.style.display = 'none';
+            }
+            
+            return isValid;
+        }
+
+        // Validate email format
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        // Show/hide loading overlay
+        function showLoading(show) {
+            if (show) {
+                Elements.overlays.loadingOverlay.classList.add('show');
+            } else {
+                Elements.overlays.loadingOverlay.classList.remove('show');
+            }
+        }
+
+        // Initialize map
+        function initializeMap() {
+            if (map) return;
+
+            // Initialize map centered on Rio de Janeiro
+            map = L.map('map').setView([-22.9068, -43.1729], 12);
+
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Add click event to map
+            map.on('click', function(e) {
+                selectLocation(e.latlng);
+            });
+
+            // Add existing alerts as markers
+            alertData.forEach(alert => {
+                addAlertMarker(alert);
+            });
+
+            // Get user location
+            getCurrentLocation();
+        }
+
+        // Add alert marker to map
+        function addAlertMarker(alert) {
+            const icon = L.divIcon({
+                html: `<div class="custom-marker pulse-marker"><i class="fas ${alert.icon}"></i></div>`,
+                iconSize: [30, 30],
+                className: ''
+            });
+
+            const marker = L.marker([alert.lat, alert.lng], { icon: icon })
+                .addTo(map)
+                .bindPopup(`
+                    <div style="text-align: center;">
+                        <h4 style="margin: 0 0 5px 0; color: var(--primary-color);">${alert.title}</h4>
+                        <p style="margin: 0 0 5px 0; font-size: 12px;">${alert.location}</p>
+                        <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">${alert.description}</p>
+                    </div>
+                `);
+        }
+
+        // Select location on map
+        function selectLocation(latlng) {
+            // Remove previous marker
+            if (currentMarker) {
+                map.removeLayer(currentMarker);
+            }
+
+            // Add new marker
+            currentMarker = L.marker(latlng, {
+                icon: L.divIcon({
+                    html: `<div class="custom-marker" style="background-color: #4CAF50;"><i class="fas fa-check"></i></div>`,
+                    iconSize: [30, 30],
+                    className: ''
+                })
+            }).addTo(map);
+
+            selectedLocation = latlng;
+
+            // Update address
+            updateAddress(latlng);
+        }
+
+        // Update address from coordinates
+        function updateAddress(latlng) {
+            // Using Nominatim reverse geocoding
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&zoom=18&addressdetails=1`)
+                .then(response => response.json())
+                .then(data => {
+                    const address = data.display_name || 'Localização selecionada';
+                    document.getElementById('selected-address').textContent = address;
+                })
+                .catch(error => {
+                    console.error('Error getting address:', error);
+                    document.getElementById('selected-address').textContent = `Lat: ${latlng.lat.toFixed(6)}, Lng: ${latlng.lng.toFixed(6)}`;
+                });
+        }
+
+        // Get current location
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                showLoading(true);
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const latlng = L.latLng(position.coords.latitude, position.coords.longitude);
+                        map.setView(latlng, 15);
+                        selectLocation(latlng);
+                        showLoading(false);
+                        showSuccessMessage('Localização atual encontrada!');
+                    },
+                    function(error) {
+                        console.error('Error getting location:', error);
+                        showLoading(false);
+                        showSuccessMessage('Não foi possível obter sua localização');
+                    }
+                );
+            } else {
+                showSuccessMessage('Geolocalização não suportada');
+            }
+        }
+
+        // Search location
+        function searchLocation() {
+            const query = Elements.inputs.mapSearch.value;
+            if (!query) return;
+
+            showLoading(true);
+
+            // Using Nominatim geocoding
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Rio de Janeiro, Brazil')}&limit=1`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        const result = data[0];
+                        const latlng = L.latLng(parseFloat(result.lat), parseFloat(result.lon));
+                        map.setView(latlng, 16);
+                        selectLocation(latlng);
+                        showLoading(false);
+                        showSuccessMessage('Localização encontrada!');
+                    } else {
+                        showLoading(false);
+                        showSuccessMessage('Localização não encontrada');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching location:', error);
+                    showLoading(false);
+                    showSuccessMessage('Erro ao buscar localização');
+                });
+        }
+
+        // Map controls
+        function zoomIn() {
+            if (map) map.zoomIn();
+        }
+
+        function zoomOut() {
+            if (map) map.zoomOut();
+        }
+
+        // Confirm map location
+        function confirmMapLocation() {
+            if (!selectedLocation) {
+                showSuccessMessage('Por favor, selecione uma localização no mapa');
+                return;
+            }
+
+            // Update location text in new alert screen
+            document.getElementById('location-text').textContent = document.getElementById('selected-address').textContent;
+            
+            // Store selected location
+            AppState.selectedLocation = selectedLocation;
+            
+            showScreen('new-alert-screen');
+            showSuccessMessage('Localização confirmada!');
+        }
+
+        // Handle file selection
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            
+            for (let file of files) {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        AppState.uploadedImages.push({
+                            id: Date.now() + Math.random(),
+                            src: e.target.result,
+                            name: file.name
+                        });
+                        renderUploadedImages();
+                        showSuccessMessage('Imagem adicionada com sucesso!');
+                    };
+                    reader.readAsDataURL(file);
+                } else if (file.type.startsWith('video/')) {
+                    showSuccessMessage('Vídeos serão suportados em breve!');
+                }
+            }
+            
+            // Clear the input
+            event.target.value = '';
+        }
+
+        // Render uploaded images
+        function renderUploadedImages() {
+            const grid = document.getElementById('image-upload-grid');
+            grid.innerHTML = '';
+            
+            AppState.uploadedImages.forEach((image, index) => {
+                const imageContainer = document.createElement('div');
+                imageContainer.className = 'uploaded-image';
+                imageContainer.innerHTML = `
+                    <img src="${image.src}" alt="${image.name}" onclick="viewUploadedImage(${index})">
+                    <button class="remove-image" onclick="removeUploadedImage(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                grid.appendChild(imageContainer);
+            });
+        }
+
+        // Remove uploaded image
+        function removeUploadedImage(index) {
+            AppState.uploadedImages.splice(index, 1);
+            renderUploadedImages();
+            showSuccessMessage('Imagem removida');
+        }
+
+        // View uploaded image
+        function viewUploadedImage(index) {
+            currentGalleryImages = AppState.uploadedImages.map(img => img.src);
+            currentGalleryIndex = index;
+            openGallery();
+        }
+
+        // Render alerts with lazy loading
+        function renderAlerts(alerts) {
+            const alertList = document.getElementById('alert-list');
+            alertList.innerHTML = '';
+
+            alerts.forEach((alert, index) => {
+                const alertCard = document.createElement('div');
+                alertCard.className = 'alert-card';
+                alertCard.setAttribute('data-alert-id', alert.id);
+                
+                // Add admin badge if admin is logged in
+                let adminBadge = '';
+                if (AppState.isAdmin) {
+                    adminBadge = '<div class="admin-badge"><i class="fas fa-shield-alt"></i> ADMIN</div>';
+                }
+                
+                // Image gallery with lazy loading
+                let imageHtml = '';
+                if (alert.images && alert.images.length > 0) {
+                    imageHtml = `
+                        <div class="alert-image-container">
+                            <img src="${alert.images[0]}" alt="${alert.title}" class="alert-image lazy" data-src="${alert.images[0]}" onclick="openAlertGallery(${alert.id}, 0)" loading="lazy">
+                            ${alert.images.length > 1 ? `
+                                <div class="image-gallery-indicator">
+                                    <i class="fas fa-images"></i>
+                                    <span>${alert.images.length}</span>
+                                </div>
+                                <div class="gallery-dots">
+                                    ${alert.images.map((_, index) => `
+                                        <div class="gallery-dot ${index === 0 ? 'active' : ''}" onclick="openAlertGallery(${alert.id}, ${index})"></div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+                
+                // Admin delete button - ONLY SHOW IF ADMIN
+                let adminDeleteBtn = '';
+                if (AppState.isAdmin) {
+                    adminDeleteBtn = `
+                        <button class="delete-btn" onclick="confirmDeleteAlert(${alert.id})">
+                            <i class="fas fa-trash"></i> Apagar
+                        </button>
+                    `;
+                }
+                
+                alertCard.innerHTML = `
+                    ${adminBadge}
+                    ${imageHtml}
+                    <div class="alert-content">
+                        <div class="alert-header">
+                            <div class="alert-icon">
+                                <i class="fas ${alert.icon}"></i>
+                            </div>
+                            <div class="alert-info">
+                                <h3>${alert.title}</h3>
+                                <p><i class="fas fa-map-marker-alt"></i> ${alert.location} • ${alert.distance}</p>
+                            </div>
+                        </div>
+                        <div class="alert-description">
+                            ${alert.description}
+                        </div>
+                        <div class="alert-footer">
+                            <div class="alert-time">
+                                <i class="far fa-clock"></i> ${alert.time}
+                            </div>
+                            <div class="alert-actions">
+                                <button class="action-btn" onclick="confirmAlert(${alert.id})">
+                                    <i class="fas fa-check"></i> Confirmar (${alert.confirmed})
+                                </button>
+                                <button class="action-btn" onclick="viewOnMap(${alert.id})">
+                                    <i class="fas fa-map"></i> Ver no mapa
+                                </button>
+                                ${adminDeleteBtn}
+                            </div>
+                        </div>
+                        <div class="social-actions">
+                            <button class="social-btn ${alert.liked ? 'liked' : ''}" onclick="toggleLike(${alert.id})">
+                                <i class="${alert.liked ? 'fas' : 'far'} fa-heart"></i>
+                                <span>${alert.likes}</span>
+                            </button>
+                            <button class="social-btn" onclick="openComments(${alert.id})">
+                                <i class="far fa-comment"></i>
+                                <span>${alert.comments}</span>
+                            </button>
+                            <button class="social-btn" onclick="openShareModal(${alert.id})">
+                                <i class="fas fa-share"></i>
+                                <span>Compartilhar</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                alertList.appendChild(alertCard);
+            });
+            
+            // Re-initialize lazy loading for new images
+            optimizeImages();
+        }
+
+        // Confirm delete alert
+        function confirmDeleteAlert(alertId) {
+            const alert = alertData.find(a => a.id === alertId);
+            if (!alert) return;
+            
+            document.getElementById('delete-text').textContent = `Tem certeza que deseja apagar o alerta "${alert.title}"? Esta ação não pode ser desfeita.`;
+            
+            deleteCallback = () => {
+                deleteAlert(alertId);
+            };
+            
+            Elements.modals.deleteModal.classList.add('show');
+        }
+
+        // Delete alert
+        function deleteAlert(alertId) {
+            const index = alertData.findIndex(a => a.id === alertId);
+            if (index !== -1) {
+                alertData.splice(index, 1);
+                renderAlerts(alertData);
+                saveAlertData();
+                showSuccessMessage('Alerta apagado com sucesso!');
+            }
+            closeDeleteModal();
+        }
+
+        // Confirm delete comment
+        function confirmDeleteComment(alertId, commentIndex) {
+            const alert = alertData.find(a => a.id === alertId);
+            const comments = commentsData[alertId];
+            if (!alert || !comments || !comments[commentIndex]) return;
+            
+            document.getElementById('delete-text').textContent = `Tem certeza que deseja apagar este comentário? Esta ação não pode ser desfeita.`;
+            
+            deleteCallback = () => {
+                deleteComment(alertId, commentIndex);
+            };
+            
+            Elements.modals.deleteModal.classList.add('show');
+        }
+
+        // Delete comment
+        function deleteComment(alertId, commentIndex) {
+            const comments = commentsData[alertId];
+            if (comments && comments[commentIndex]) {
+                comments.splice(commentIndex, 1);
+                
+                // Update comment count
+                const alert = alertData.find(a => a.id === alertId);
+                if (alert) {
+                    alert.comments--;
+                }
+                
+                saveCommentsData();
+                renderAlerts(alertData);
+                openComments(alertId);
+                showSuccessMessage('Comentário apagado com sucesso!');
+            }
+            closeDeleteModal();
+        }
+
+        // Close delete modal
+        function closeDeleteModal() {
+            Elements.modals.deleteModal.classList.remove('show');
+            deleteCallback = null;
+        }
+
+        // Open share modal
+        function openShareModal(alertId) {
+            const alert = alertData.find(a => a.id === alertId);
+            if (!alert) return;
+
+            currentShareAlert = alert;
+            
+            // Update share preview
+            document.getElementById('share-title').textContent = alert.title;
+            document.getElementById('share-description').textContent = alert.description;
+            
+            // Generate share link
+            const shareUrl = `${window.location.origin}${window.location.pathname}?alert=${alertId}`;
+            document.getElementById('share-link').value = shareUrl;
+            
+            // Show modal
+            Elements.modals.shareModal.classList.add('show');
+        }
+
+        // Close share modal
+        function closeShareModal() {
+            Elements.modals.shareModal.classList.remove('show');
+            currentShareAlert = null;
+        }
+
+        // Share to WhatsApp
+        function shareToWhatsApp(event) {
+            event.preventDefault();
+            if (!currentShareAlert) return;
+
+            const text = `🚨 *${currentShareAlert.title}*\n\n${currentShareAlert.description}\n\n📍 ${currentShareAlert.location}\n\n⏰ ${currentShareAlert.time}\n\n📱 Via Alerta Via - Mobilidade Segura`;
+            const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+            
+            window.open(url, '_blank');
+            showSuccessMessage('Abrindo WhatsApp...');
+        }
+
+        // Share to Facebook
+        function shareToFacebook(event) {
+            event.preventDefault();
+            if (!currentShareAlert) return;
+
+            const url = `${window.location.origin}${window.location.pathname}?alert=${currentShareAlert.id}`;
+            const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+            
+            window.open(shareUrl, '_blank', 'width=600,height=400');
+            showSuccessMessage('Abrindo Facebook...');
+        }
+
+        // Share to Twitter
+        function shareToTwitter(event) {
+            event.preventDefault();
+            if (!currentShareAlert) return;
+
+            const text = `🚨 ${currentShareAlert.title} - ${currentShareAlert.location} #AlertaVia #RioDeJaneiro #MobilidadeUrbana`;
+            const url = `${window.location.origin}${window.location.pathname}?alert=${currentShareAlert.id}`;
+            const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+            
+            window.open(shareUrl, '_blank', 'width=600,height=400');
+            showSuccessMessage('Abrindo Twitter...');
+        }
+
+        // Share to Instagram
+        function shareToInstagram(event) {
+            event.preventDefault();
+            showSuccessMessage('Copiado para a área de transferência! Abra o Instagram e cole na sua story.');
+            copyToClipboard(event);
+        }
+
+        // Share to Telegram
+        function shareToTelegram(event) {
+            event.preventDefault();
+            if (!currentShareAlert) return;
+
+            const text = `🚨 *${currentShareAlert.title}*\n\n${currentShareAlert.description}\n\n📍 ${currentShareAlert.location}\n\n⏰ ${currentShareAlert.time}\n\n📱 Via Alerta Via`;
+            const url = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`;
+            
+            window.open(url, '_blank');
+            showSuccessMessage('Abrindo Telegram...');
+        }
+
+        // Share to LinkedIn
+        function shareToLinkedIn(event) {
+            event.preventDefault();
+            if (!currentShareAlert) return;
+
+            const url = `${window.location.origin}${window.location.pathname}?alert=${currentShareAlert.id}`;
+            const shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+            
+            window.open(shareUrl, '_blank', 'width=600,height=400');
+            showSuccessMessage('Abrindo LinkedIn...');
+        }
+
+        // Share to Email
+        function shareToEmail(event) {
+            event.preventDefault();
+            if (!currentShareAlert) return;
+
+            const subject = `Alerta Via: ${currentShareAlert.title}`;
+            const body = `Olá,\n\nGostaria de compartilhar este alerta de trânsito:\n\n${currentShareAlert.title}\n${currentShareAlert.description}\n\nLocal: ${currentShareAlert.location}\nHorário: ${currentShareAlert.time}\n\nAcesse o Alerta Via para mais informações: ${window.location.href}\n\nAtenciosamente,`;
+            const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            
+            window.location.href = url;
+            showSuccessMessage('Abrindo cliente de e-mail...');
+        }
+
+        // Share to SMS
+        function shareToSMS(event) {
+            event.preventDefault();
+            if (!currentShareAlert) return;
+
+            const text = `🚨 ${currentShareAlert.title} - ${currentShareAlert.location}. ${currentShareAlert.description}. Via Alerta Via: ${window.location.href}`;
+            const url = `sms:?&body=${encodeURIComponent(text)}`;
+            
+            window.location.href = url;
+            showSuccessMessage('Abrindo aplicativo de SMS...');
+        }
+
+        // Copy to clipboard
+        function copyToClipboard(event) {
+            event.preventDefault();
+            copyShareLink();
+        }
+
+        // Copy share link
+        function copyShareLink() {
+            const shareLink = document.getElementById('share-link');
+            shareLink.select();
+            shareLink.setSelectionRange(0, 99999);
+            
+            try {
+                document.execCommand('copy');
+                showSuccessMessage('Link copiado para a área de transferência!');
+            } catch (err) {
+                // Fallback for modern browsers
+                navigator.clipboard.writeText(shareLink.value).then(() => {
+                    showSuccessMessage('Link copiado para a área de transferência!');
+                }).catch(() => {
+                    showSuccessMessage('Não foi possível copiar o link');
+                });
+            }
+        }
+
+        // Open alert gallery
+        function openAlertGallery(alertId, imageIndex) {
+            const alert = alertData.find(a => a.id === alertId);
+            if (alert && alert.images) {
+                currentGalleryImages = alert.images;
+                currentGalleryIndex = imageIndex;
+                openGallery();
+            }
+        }
+
+        // Open gallery modal
+        function openGallery() {
+            const modal = Elements.modals.galleryModal;
+            const image = document.getElementById('gallery-image');
+            const counter = document.getElementById('gallery-counter');
+            
+            image.src = currentGalleryImages[currentGalleryIndex];
+            counter.textContent = `${currentGalleryIndex + 1} / ${currentGalleryImages.length}`;
+            
+            modal.classList.add('show');
+        }
+
+        // Close gallery
+        function closeGallery() {
+            Elements.modals.galleryModal.classList.remove('show');
+        }
+
+        // Navigate gallery
+        function navigateGallery(direction) {
+            currentGalleryIndex += direction;
+            
+            if (currentGalleryIndex < 0) {
+                currentGalleryIndex = currentGalleryImages.length - 1;
+            } else if (currentGalleryIndex >= currentGalleryImages.length) {
+                currentGalleryIndex = 0;
+            }
+            
+            const image = document.getElementById('gallery-image');
+            const counter = document.getElementById('gallery-counter');
+            
+            image.src = currentGalleryImages[currentGalleryIndex];
+            counter.textContent = `${currentGalleryIndex + 1} / ${currentGalleryImages.length}`;
+        }
+
+        // Toggle like
+        function toggleLike(alertId) {
+            const alert = alertData.find(a => a.id === alertId);
+            if (alert) {
+                alert.liked = !alert.liked;
+                alert.likes += alert.liked ? 1 : -1;
+                renderAlerts(alertData);
+                showSuccessMessage(alert.liked ? 'Você curtiu este alerta!' : 'Você removeu a curtida');
+                
+                // Save to localStorage
+                saveAlertData();
+            }
+        }
+
+        // Open comments modal
+        function openComments(alertId) {
+            currentAlertId = alertId;
+            const modal = Elements.modals.commentModal;
+            const commentList = document.getElementById('comment-list');
+            
+            // Load comments for this alert
+            const comments = commentsData[alertId] || [];
+            commentList.innerHTML = '';
+            
+            if (comments.length === 0) {
+                commentList.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Nenhum comentário ainda. Seja o primeiro!</p>';
+            } else {
+                comments.forEach((comment, index) => {
+                    const commentItem = document.createElement('div');
+                    commentItem.className = 'comment-item';
+                    
+                    // Add delete button for admin ONLY
+                    let deleteBtn = '';
+                    if (AppState.isAdmin) {
+                        deleteBtn = `
+                            <button class="comment-delete-btn" onclick="confirmDeleteComment(${alertId}, ${index})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        `;
+                    }
+                    
+                    commentItem.innerHTML = `
+                        <div class="comment-avatar">${comment.avatar}</div>
+                        <div class="comment-content">
+                            <div class="comment-author">${comment.author}</div>
+                            <div class="comment-text">${comment.text}</div>
+                            <div class="comment-time">${comment.time}</div>
+                        </div>
+                        ${deleteBtn}
+                    `;
+                    commentList.appendChild(commentItem);
+                });
+            }
+            
+            modal.classList.add('show');
+        }
+
+        // Close comments modal
+        function closeCommentModal() {
+            Elements.modals.commentModal.classList.remove('show');
+            currentAlertId = null;
+        }
+
+        // Send comment
+        function sendComment() {
+            const input = Elements.inputs.commentInput;
+            const text = input.value.trim();
+            
+            if (text && currentAlertId) {
+                const alert = alertData.find(a => a.id === currentAlertId);
+                if (alert) {
+                    // Add comment to data
+                    if (!commentsData[currentAlertId]) {
+                        commentsData[currentAlertId] = [];
+                    }
+                    
+                    const newComment = {
+                        author: AppState.currentUser ? AppState.currentUser.name : 'Visitante',
+                        text: text,
+                        time: 'Agora',
+                        avatar: AppState.currentUser ? AppState.currentUser.avatar : 'VI'
+                    };
+                    
+                    commentsData[currentAlertId].unshift(newComment);
+                    alert.comments++;
+                    
+                    // Save to localStorage
+                    saveCommentsData();
+                    
+                    // Re-render
+                    renderAlerts(alertData);
+                    openComments(currentAlertId);
+                    
+                    // Clear input
+                    input.value = '';
+                    showSuccessMessage('Comentário enviado com sucesso!');
+                }
+            }
+        }
+
+        // Filter alerts
+        function filterAlerts(filter) {
+            // Update active filter button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Filter alerts based on selected filter
+            let filteredAlerts = [...alertData];
+            
+            if (filter === 'recent') {
+                // Already sorted by recent
+            } else if (filter === 'nearby') {
+                filteredAlerts.sort((a, b) => {
+                    const distA = parseFloat(a.distance);
+                    const distB = parseFloat(b.distance);
+                    return distA - distB;
+                });
+            } else if (filter === 'accident' || filter === 'pothole' || 
+                      filter === 'traffic' || filter === 'construction') {
+                filteredAlerts = alertData.filter(alert => alert.type === filter);
+            }
+
+            renderAlerts(filteredAlerts);
+        }
+
+        // Select alert type
+        function selectAlertType(element, type) {
+            document.querySelectorAll('.type-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            AppState.selectedAlertType = type;
+        }
+
+        // Submit alert
+        function submitAlert() {
+            if (AppState.uploadedImages.length === 0) {
+                showSuccessMessage('Por favor, adicione pelo menos uma foto!');
+                return;
+            }
+            
+            if (!AppState.selectedLocation) {
+                showSuccessMessage('Por favor, selecione uma localização no mapa!');
+                return;
+            }
+            
+            showLoading(true);
+            
+            // Simulate API call
+            setTimeout(() => {
+                showScreen('feed-screen');
+                showLoading(false);
+                showSuccessMessage('Alerta enviado com sucesso!');
+                
+                // Add new alert to the beginning of the list
+                const newAlert = {
+                    id: alertData.length + 1,
+                    type: AppState.selectedAlertType || 'other',
+                    icon: getIconForType(AppState.selectedAlertType),
+                    title: 'Novo alerta reportado',
+                    location: document.getElementById('location-text').textContent,
+                    distance: '0.1 km',
+                    description: Elements.inputs.alertDescription.value || 'Sem descrição fornecida.',
+                    time: 'Agora',
+                    confirmed: 1,
+                    likes: 0,
+                    comments: 0,
+                    images: [...AppState.uploadedImages.map(img => img.src)],
+                    liked: false,
+                    lat: AppState.selectedLocation.lat,
+                    lng: AppState.selectedLocation.lng
+                };
+                
+                alertData.unshift(newAlert);
+                
+                // Add marker to map if it exists
+                if (map) {
+                    addAlertMarker(newAlert);
+                }
+                
+                renderAlerts(alertData);
+                
+                // Save to localStorage
+                saveAlertData();
+                
+                // Clear uploaded images
+                AppState.uploadedImages = [];
+                renderUploadedImages();
+                
+                // Clear form
+                Elements.inputs.alertDescription.value = '';
+                document.querySelectorAll('.type-option').forEach(option => {
+                    option.classList.remove('selected');
+                });
+                AppState.selectedAlertType = null;
+            }, 1500);
+        }
+
+        // Get icon for alert type
+        function getIconForType(type) {
+            const iconMap = {
+                'accident': 'fa-car-crash',
+                'pothole': 'fa-road',
+                'traffic': 'fa-traffic-light',
+                'construction': 'fa-hard-hat',
+                'flood': 'fa-water',
+                'other': 'fa-exclamation-triangle'
+            };
+            return iconMap[type] || 'fa-exclamation-triangle';
+        }
+
+        // Confirm alert
+        function confirmAlert(id) {
+            const alert = alertData.find(a => a.id === id);
+            if (alert) {
+                alert.confirmed++;
+                renderAlerts(alertData);
+                showSuccessMessage('Alerta confirmado!');
+                
+                // Save to localStorage
+                saveAlertData();
+            }
+        }
+
+        // View on map
+        function viewOnMap(id) {
+            const alert = alertData.find(a => a.id === id);
+            if (alert) {
+                showScreen('map-screen');
+                if (map) {
+                    map.setView([alert.lat, alert.lng], 16);
+                    selectLocation(L.latLng(alert.lat, alert.lng));
+                }
+                showSuccessMessage('Visualizando localização no mapa');
+            }
+        }
+
+        // Show screen
+        function showScreen(screenId) {
+            // Hide all screens
+            Object.values(Elements.screens).forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            // Show selected screen
+            Elements.screens[screenId].classList.add('active');
+            AppState.currentScreen = screenId;
+            
+            // Initialize map if showing map screen
+            if (screenId === 'map-screen' && !map) {
+                setTimeout(() => {
+                    initializeMap();
+                }, 100);
+            }
+            
+            // Update bottom navigation
+            updateBottomNav(screenId);
+        }
+
+        // Update bottom navigation
+        function updateBottomNav(screenId) {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            if (screenId === 'feed-screen') {
+                document.querySelectorAll('.nav-item')[0].classList.add('active');
+            } else if (screenId === 'new-alert-screen') {
+                document.querySelectorAll('.nav-item')[1].classList.add('active');
+            } else if (screenId === 'map-screen') {
+                document.querySelectorAll('.nav-item')[2].classList.add('active');
+            } else if (screenId === 'menu-screen') {
+                document.querySelectorAll('.nav-item')[3].classList.add('active');
+            }
+        }
+
+        // Show success message
+        function showSuccessMessage(message) {
+            const successMessage = document.getElementById('success-message');
+            const successText = document.getElementById('success-text');
+            
+            successText.textContent = message;
+            successMessage.classList.add('show');
+            
+            setTimeout(() => {
+                successMessage.classList.remove('show');
+            }, 3000);
+        }
+
+        // Toggle dark mode
+        function toggleDarkMode() {
+            const isDarkMode = Elements.buttons.darkModeToggle.checked;
+            
+            if (isDarkMode) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                AppState.darkMode = true;
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                AppState.darkMode = false;
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('darkMode', AppState.darkMode);
+        }
+
+        // Check dark mode preference
+        function checkDarkModePreference() {
+            if (AppState.darkMode) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                Elements.buttons.darkModeToggle.checked = true;
+            }
+        }
+
+        // Save alert data to localStorage
+        function saveAlertData() {
+            localStorage.setItem('alertData', JSON.stringify(alertData));
+        }
+
+        // Save comments data to localStorage
+        function saveCommentsData() {
+            localStorage.setItem('commentsData', JSON.stringify(commentsData));
+        }
+
+        // Additional menu functions
+        function toggleNotifications() {
+            showSuccessMessage('Notificações atualizadas!');
+        }
+
+        function toggleSearch() {
+            showSuccessMessage('Busca em desenvolvimento!');
+        }
+
+        function showAlertHelp() {
+            showSuccessMessage('Ajuda para criar alertas em desenvolvimento!');
+        }
+
+        function showSettings() {
+            showSuccessMessage('Configurações em desenvolvimento!');
+        }
+
+        function showProfile() {
+            showSuccessMessage('Perfil em desenvolvimento!');
+        }
+
+        function showMyAlerts() {
+            showSuccessMessage('Meus alertas em desenvolvimento!');
+        }
+
+        function showAdminStats() {
+            showSuccessMessage('Estatísticas admin em desenvolvimento!');
+        }
+
+        function showModeration() {
+            showSuccessMessage('Moderação em desenvolvimento!');
+        }
+
+        function showUsers() {
+            showSuccessMessage('Gerenciamento de usuários em desenvolvimento!');
+        }
+
+        function showTutorial() {
+            showSuccessMessage('Tutorial em desenvolvimento!');
+        }
+
+        function showSupport() {
+            showSuccessMessage('Suporte em desenvolvimento!');
+        }
+
+        function showPrivacy() {
+            showSuccessMessage('Política de privacidade em desenvolvimento!');
+        }
+
+        function showMission() {
+            showSuccessMessage('Missão e visão em desenvolvimento!');
+        }
+
+        function showTeam() {
+            showSuccessMessage('Equipe em desenvolvimento!');
+        }
+
+        function showRateApp() {
+            showSuccessMessage('Avaliação do app em desenvolvimento!');
+        }
+
+        function logout() {
+            AppState.currentUser = null;
+            AppState.isAdmin = false;
+            localStorage.removeItem('userData');
+            hideAdminInterface();
+            showScreen('login-screen');
+            showSuccessMessage('Você saiu da sua conta!');
+        }
+    </script>
+</body>
+</html>
